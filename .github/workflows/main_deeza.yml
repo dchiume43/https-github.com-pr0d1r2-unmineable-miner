@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - deeza
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to registry
+      uses: docker/login-action@v1
+      with:
+        registry: https://index.docker.io/v1/
+        username: ${{ secrets.AzureAppService_ContainerUsername_a6d1a46bbe3b4863a5cb9f11c0614edb }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_b9d8fab9e2c5470d9a6d43900e3b85e1 }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: index.docker.io/${{ secrets.AzureAppService_ContainerUsername_a6d1a46bbe3b4863a5cb9f11c0614edb }}/rafaelzimmermann/unmineable:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'deeza'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_de83ff065bbb42d6851c79e689beffa8 }}
+        images: 'index.docker.io/${{ secrets.AzureAppService_ContainerUsername_a6d1a46bbe3b4863a5cb9f11c0614edb }}/rafaelzimmermann/unmineable:${{ github.sha }}'
